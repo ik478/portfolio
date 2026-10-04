@@ -1,0 +1,144 @@
+@if (person.value(); as p) {
+
+  <div class="bg">
+    <span class="blob b1"></span>
+    <span class="blob b2"></span>
+    <span class="blob b3"></span>
+  </div>
+
+  <!-- NAVBAR -->
+  <header class="nav">
+    <a [href]="link('home')" (click)="go($event, 'home')" class="brand">{{ p.initials }}<span>.</span></a>
+    <nav>
+      <a [href]="link('about')" (click)="go($event, 'about')">About</a>
+      <a [href]="link('skills')" (click)="go($event, 'skills')">Skills</a>
+      <a [href]="link('projects')" (click)="go($event, 'projects')">Projects</a>
+      <a [href]="link('contact')" (click)="go($event, 'contact')" class="nav-cta">Contact</a>
+    </nav>
+  </header>
+
+  <!-- HERO -->
+  <section id="home" class="hero">
+    <div class="avatar"><span>{{ p.initials }}</span></div>
+    <p class="hello">Hello, I'm</p>
+    <h1 class="name"><span class="grad">{{ p.name }}</span></h1>
+    <p class="role"><span class="typing" [style.--chars]="p.role.length">{{ p.role }}</span></p>
+    <p class="lead">{{ p.tagline }}</p>
+    <div class="actions">
+      <a [href]="link('projects')" (click)="go($event, 'projects')" class="btn primary">View my work</a>
+      <a [href]="link('contact')" (click)="go($event, 'contact')" class="btn ghost">Get in touch</a>
+    </div>
+    <a [href]="link('about')" (click)="go($event, 'about')" class="scroll-hint" aria-label="Scroll down"><span></span></a>
+  </section>
+
+  <!-- ABOUT -->
+  <section id="about" class="section">
+    <h2 class="heading reveal">About <span class="grad">Me</span></h2>
+    <div class="about reveal">
+      <p>{{ p.about }}</p>
+      <div class="stats">
+        @for (s of p.stats; track s.label) {
+          <div><strong>{{ s.value }}</strong><span>{{ s.label }}</span></div>
+        }
+      </div>
+    </div>
+  </section>
+
+  <!-- SKILLS -->
+  <section id="skills" class="section">
+    <h2 class="heading reveal">My <span class="grad">Skills</span></h2>
+    <div class="skills">
+      @for (s of p.skills; track s.name) {
+        <div class="skill reveal">
+          <div class="skill-top"><span>{{ s.name }}</span><span>{{ s.level }}%</span></div>
+          <div class="bar"><i [style.--level]="s.level + '%'"></i></div>
+        </div>
+      }
+    </div>
+  </section>
+
+  <!-- PROJECTS: sliding carousel -->
+  <section id="projects" class="section">
+    <h2 class="heading reveal">Featured <span class="grad">Projects</span></h2>
+
+    @if (p.projects.length > 0) {
+      <div class="carousel reveal" (mouseenter)="paused.set(true)" (mouseleave)="paused.set(false)">
+        <div class="viewport">
+          <div class="track" [style.transform]="'translateX(' + (-index() * 100) + '%)'">
+            @for (pr of p.projects; track pr.id) {
+              <article class="slide">
+                <div class="media">
+                  @if (pr.gif) {
+                    <img [src]="pr.gif" [alt]="pr.title" />
+                  } @else {
+                    <div class="placeholder">
+                      <span class="play"></span>
+                      <small>Preview coming soon</small>
+                    </div>
+                  }
+                </div>
+                <div class="info">
+                  <h3>{{ pr.title }}</h3>
+                  <p>{{ pr.description }}</p>
+                  <div class="tags">
+                    @for (t of pr.tags; track t) { <span>{{ t }}</span> }
+                  </div>
+                  <div class="github-btn">
+                    <a [href]="pr.githubUrl" target="_blank" rel="noopener noreferrer"> 
+                      <button class="btn ghost">Check in GitHub</button> 
+                    </a> 
+                  </div>
+                </div>
+              </article>
+            }
+          </div>
+        </div>
+
+        <div class="controls">
+          <button class="arrow" (click)="prev(p.projects.length)" aria-label="Previous project">‹</button>
+          <div class="dots">
+            @for (pr of p.projects; track pr.id; let i = $index) {
+              <button class="dot-btn" [class.active]="i === index()" (click)="index.set(i)"
+                      [attr.aria-label]="'Go to project ' + (i + 1)"></button>
+            }
+          </div>
+          <button class="arrow" (click)="next(p.projects.length)" aria-label="Next project">›</button>
+        </div>
+      </div>
+    } @else {
+      <p class="sub-note">Projects will appear here soon.</p>
+    }
+  </section>
+
+  <!-- CONTACT -->
+  <section id="contact" class="section">
+    <h2 class="heading reveal">Let's <span class="grad">Talk</span></h2>
+    <div class="contact reveal">
+      <input #nameBox placeholder="Your name" />
+      <input #emailBox type="email" placeholder="Your email" />
+      <textarea #msgBox rows="5" placeholder="Your message"></textarea>
+
+      <button class="btn primary" (click)="send(nameBox, emailBox, msgBox)" [disabled]="status() === 'sending'">
+        {{ status() === 'sending' ? 'Sending...' : 'Send message' }}
+      </button>
+
+      @if (status() === 'sent') { <p class="ok">Thank you! Your message was sent.</p> }
+      @if (status() === 'error') { <p class="error">Something went wrong. Please try again.</p> }
+
+      <p class="mail">Or email me: <a [href]="'mailto:' + p.email">{{ p.email }}</a></p>
+    </div>
+  </section>
+
+  <footer class="footer">© {{ year }} {{ p.name }}. Built with Angular &amp; Python.</footer>
+
+} @else if (person.error()) {
+
+  <app-inactive />
+
+} @else {
+
+  <div class="center">
+    <div class="loader"><span></span><span></span><span></span></div>
+  </div>
+
+}
