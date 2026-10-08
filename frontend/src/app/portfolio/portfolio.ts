@@ -1,5 +1,7 @@
-import { Component, DestroyRef, effect, inject, input, signal } from '@angular/core';
-import { HttpClient, httpResource } from '@angular/common/http';
+import {
+  Component, DestroyRef, computed, effect, inject, input, signal, untracked,
+} from '@angular/core';
+import { HttpClient, httpResource, HttpErrorResponse } from '@angular/common/http';
 import { Title } from '@angular/platform-browser';
 import { Inactive } from '../inactive/inactive';
 
@@ -43,7 +45,28 @@ export class Portfolio {
     () => `/api/portfolio/${encodeURIComponent(this.username())}`
   );
 
-  year = new Date().getFullYear();
+  // SAFE accessor: never throws, even when the request failed.
+  // Use data() in the template instead of person.value()
+  data = computed<Person | undefined>(() =>
+    this.person.hasValue() ? this.person.value() : undefined
+  );
+
+  // HTTP status of a failed request (or undefined)
+  private errorStatus = computed<number | undefined>(() => {
+    const err = this.person.error() as unknown;
+    const res = err instanceof HttpErrorResponse
+      ? err
+      : (err as { cause?: unknown } | undefined)?.cause;
+    return res instanceof HttpErrorResponse ? res.status : undefined;
+  });
+
+  // 404 -> show the inactive page in place
+  notFound = computed(() => this.errorStatus() === 404);
+
+  // Any other failure (500, network...) -> show an error message
+  failed = computed(() => !!this.person.error() && this.errorStatus() !== 404);
+
+  readonly year = new Date().getFullYear();
 
   // Slider state
   index = signal(0);
@@ -53,20 +76,30 @@ export class Portfolio {
   status = signal<'idle' | 'sending' | 'sent' | 'error'>('idle');
 
   constructor() {
-    // Auto-slide every 4.5 seconds (pauses while the mouse is over the slider)
-    const timer = setInterval(() => {
-      const count = this.person.value()?.projects.length ?? 0;
-      if (!this.paused() && count > 1) {
-        this.index.update((i) => (i + 1) % count);
-      }
-    }, 4500);
-    inject(DestroyRef).onDestroy(() => clearInterval(timer));
-
     // Browser tab title = person's name
     effect(() => {
-      const p = this.person.value();
+      const p = this.data();
       if (p) this.title.setTitle(`${p.name} | Portfolio`);
     });
+
+    // Reset UI state when the username changes
+    effect(() => {
+      this.username();
+      untracked(() => {
+        this.index.set(0);
+        this.status.set('idle');
+      });
+    });
+
+    // Auto-slide: only runs with 2+ projects and while not paused
+    effect((onCleanup) => {
+      const count = this.data()?.projects.length ?? 0;
+      if (count < 2 || this.paused()) return;
+      const t = setInterval(() => this.next(count), 4500);
+      onCleanup(() => clearInterval(t));
+    });
+
+    inject(DestroyRef).onDestroy(() => this.title.setTitle('Portfolio'));
   }
 
   next(count: number) { this.index.update((i) => (i + 1) % count); }
@@ -81,6 +114,7 @@ export class Portfolio {
   }
 
   send(nameBox: HTMLInputElement, emailBox: HTMLInputElement, msgBox: HTMLTextAreaElement) {
+    if (this.status() === 'sending') return;
     if (!nameBox.value.trim() || !emailBox.value.trim() || !msgBox.value.trim()) return;
 
     this.status.set('sending');

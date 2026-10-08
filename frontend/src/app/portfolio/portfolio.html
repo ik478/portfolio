@@ -1,4 +1,20 @@
-@if (person.value(); as p) {
+@if (notFound()) {
+
+  <app-inactive />
+
+} @else if (person.isLoading()) {
+
+  <div class="center">
+    <div class="loader"><span></span><span></span><span></span></div>
+  </div>
+
+} @else if (failed()) {
+
+  <div class="center">
+    <p>Something went wrong. Please try again later.</p>
+  </div>
+
+} @else if (data(); as p) {
 
   <div class="bg">
     <span class="blob b1"></span>
@@ -83,11 +99,11 @@
                   <div class="tags">
                     @for (t of pr.tags; track t) { <span>{{ t }}</span> }
                   </div>
-                  <div class="github-btn">
-                    <a [href]="pr.githubUrl" target="_blank" rel="noopener noreferrer"> 
-                      <button class="btn ghost">Check in GitHub</button> 
-                    </a> 
-                  </div>
+                  @if (pr.githubUrl) {
+                    <div class="github-btn">
+                      <a class="btn ghost" [href]="pr.githubUrl" target="_blank" rel="noopener noreferrer">Check in GitHub</a>
+                    </div>
+                  }
                 </div>
               </article>
             }
@@ -130,15 +146,5 @@
   </section>
 
   <footer class="footer">© {{ year }} {{ p.name }}. Built with Angular &amp; Python.</footer>
-
-} @else if (person.error()) {
-
-  <app-inactive />
-
-} @else {
-
-  <div class="center">
-    <div class="loader"><span></span><span></span><span></span></div>
-  </div>
 
 }

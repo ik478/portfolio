@@ -3,6 +3,9 @@ from pathlib import Path
 from fastapi import FastAPI, HTTPException
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
+import uvicorn
+
+import send_mail
 
 app = FastAPI()
 
@@ -16,11 +19,32 @@ def project(pid, title, description, tags, gif=None,link=None):
     # gif=None means "use the default animated preview"
     return {"id": pid, "title": title, "description": description, "tags": tags, "gif": gif,"githubUrl":link}
 
+class members():
+    def __init__(self):
+        self.name: str = ""
+        self.status : bool = True
+
+    def update(self,name,status :bool):
+        self.name = name
+        self.status = status
+
+    def get_status(self)-> bool:
+        return self.status
+    
+kiran = members()
+pavan = members()
+shreekant = members()
+
+all_members = {
+    "kiran": kiran,
+    "pavan": pavan,
+    "shreekant": shreekant
+}
 
 # ---- SAMPLE DATA: replace with real details later ----
 people = {
     "kiran": {
-        "active": True,
+        "active": kiran.get_status(),
         "name": "C K Kiran Kumar",
         "initials": "ik",
         "role": "Software Developer",
@@ -35,25 +59,30 @@ people = {
             {"value": "100%", "label": "Curiosity"},
         ],
         "skills": [
-            {"name": "Angular", "level": 90},
-            {"name": "TypeScript", "level": 85},
-            {"name": "Python / FastAPI", "level": 80},
-            {"name": "HTML & CSS", "level": 92},
+            {"name": "Python", "level": 80},
+            {"name": "ROS2", "level": 85},
+            {"name": "Gazebo", "level": 80},
+            {"name": "Omniverse", "level": 70},
+            {"name": "Isacc-sim", "level": 80},
+            {"name": "C#", "level": 85},
+            {"name": "PLC", "level": 70},
+            {"name": "Unity", "level": 85},
+            {"name": "CNC", "level": 70},
         ],
         "projects": [
-            project(1, "Atnomous mobile robot simulation", "built using ROS2 and isacc-sim created the \n web based tool to create task and automate ", ["ROS2", "Isaac-sim", "frontend skills","Python"],"/api/media/AMR_gif.gif","https://www.google.com"),
-            project(2, "Task Analytics App", "Dashboard that turns raw task data into live charts.", ["Angular", "Python", "Charts"]),
+            project(1, "Autonomous Mobile Robot Simulation", "built using ROS2 and isacc-sim created the \n web based tool to create task and automate ", ["ROS2", "Isaac-sim", "frontend skills","Python"],"/api/media/AMR_gif.gif","https://www.google.com"),
+            project(2, "AI Vision Based PPE Detection", "Built AI based Personal protective equipmet detection, \n for ensuring the required equpments are there on the person", ["Python", "Yolo"]),
             project(3, "Chat Application", "Real-time messaging with rooms and typing indicators.", ["WebSockets", "FastAPI", "Redis"]),
         ],
     },
     "pavan": {
-        "active": True,
+        "active": pavan.get_status(),
         "name": "Pavan Ashok Bushetti",
         "initials": "PAB",
         "role": "Software Developer",
         "tagline": "I turn complicated ideas into simple, delightful interfaces.",
         "about": "I love design systems, smooth animations and accessible layouts. I care about how a product feels, not just how it looks.",
-        "email": "priya@example.com",
+        "email": "pavanbushetti@gmail.com",
         "stats": [
             {"value": "1.5+", "label": "Years of experiance"},
             {"value": "25+", "label": "Screens shipped"},
@@ -73,7 +102,7 @@ people = {
         ],
     },
     "shreekant": {
-        "active": True,
+        "active": shreekant.get_status(),
         "name": "Shreekant Hallakar",
         "initials": "SH",
         "role": "C# devloper",
@@ -107,10 +136,17 @@ class Message(BaseModel):
     email: str
     message: str
 
+class status(BaseModel):
+    name : str
+    key: str
+    status :bool
+
+
 
 def find_person(username: str):
     person = people.get(username.lower())
-    if not person or not person["active"]:
+    status = all_members[username].get_status()
+    if not person or not status:
         raise HTTPException(status_code=404, detail="Portfolio not active")
     return person
 
@@ -124,6 +160,25 @@ def get_portfolio(username: str):
 @app.post("/api/portfolio/{username}/contact")
 def send_message(username: str, msg: Message):
     find_person(username)
+    send_mail.send_mail(username,msg)
     messages.append({"to": username, **msg.model_dump()})
     print(f"New message for {username}: {msg}")
     return {"ok": True}
+
+@app.post("/api/portfolio/{username}/status")
+async def lockprofile(username: str, status: status):
+    if not status.key == "QWERasdzxc123" : return "wrong key"
+
+    member = all_members.get(username)
+
+    if member is None : return "No user Found"
+
+    member.update(username, status.status)
+    print("status is executed")
+    return {
+        "username" :username,
+        "status": member.get_status()
+    }
+    
+if __name__ == "__main__":
+    uvicorn.run("main:app",host="127.0.0.1",port=8000,reload=True)
